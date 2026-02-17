@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from app.models import Task, TaskCreate
 from typing import List
 
@@ -15,6 +15,8 @@ tasks: List[Task] = [
 
 current_id = len(tasks)
 
+def get_next_id(current_id: int = current_id) -> int:
+    return current_id + 1
 
 
 @app.get("/")
@@ -30,16 +32,15 @@ def get_task(task_id: int):
     for task in tasks:
         if task.id == task_id:
             return task
-    return {"error": "Task not found"}
+    raise HTTPException(status_code=404, detail="Task not found")
 
 @app.post("/tasks", response_model=Task)
 def create_task(task: TaskCreate):
     global current_id
-    current_id += 1
-
-    new_task = Task(id=current_id, **task.model_dump())
+    new_task = Task(id=get_next_id(current_id), **task.model_dump())
+    current_id = new_task.id
     tasks.append(new_task)
-
+    
     return new_task
 
 @app.put("/tasks/{task_id}/complete", response_model=Task)
@@ -48,7 +49,7 @@ def complete_task(task_id: int):
         if task.id == task_id:
             task.completed = True
             return task
-    return {"error": "Task not found"}
+    raise HTTPException(status_code=404, detail="Task not found")
 
 @app.delete("/tasks/{task_id}")
 def delete_task(task_id: int):
@@ -56,4 +57,4 @@ def delete_task(task_id: int):
         if task.id == task_id:
             tasks.remove(task)
             return {"message": "Task deleted"}
-    return {"error": "Task not found"}
+    raise HTTPException(status_code=404, detail="Task not found")
